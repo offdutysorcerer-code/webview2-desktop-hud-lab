@@ -1,19 +1,26 @@
-# WebView2 Desktop HUD Lab
+# WebView2 Desktop Pet HUD Lab
 
-一個 Windows 桌面 HUD 實驗專案，使用 .NET WinForms 與 WebView2，讓 HTML、CSS 和 JavaScript UI 常駐桌面，並搭配透明、穿透的滑鼠視覺覆蓋層。
+Windows 桌面寵物與 HUD 實驗專案，使用 .NET WinForms 承載兩個 WebView2：
+
+- 控制面板 WebView2：選擇寵物外觀。
+- 透明覆蓋 WebView2：在桌面上顯示並移動 2D 或 3D 寵物。
 
 本專案目前不依賴 MCP，可獨立執行。
 
 ## 功能
 
-- 無邊框、置頂的 WebView2 HUD 控制面板
-- 即時顯示系統滑鼠座標
-- 將滑鼠移動到虛擬桌面的左上、中央或右下
-- 在目前位置送出滑鼠左鍵
-- 透明且不攔截操作的游標 HUD
-- `F8` 切換面板互動／滑鼠穿透
+- 無邊框、置頂的寵物選擇面板
+- 透明、置頂且滑鼠穿透的桌面寵物層
+- 2D HTML／CSS 電子寵物
+- Three.js／WebGL 程式化 3D 電子寵物
+- 即時切換 2D 與 3D 外觀
+- 寵物帶有慣性地跟隨系統滑鼠
+- 靠近螢幕邊緣時自動調整位置
+- 2D 漂浮、眨眼與搖尾動畫
+- 3D 光照、漂浮、轉頭、搖尾與能量環動畫
 - 支援多螢幕虛擬桌面座標
-- WebView2 使用者資料存放於 `%LOCALAPPDATA%\A15-HudWebViewDemo\WebView2`
+- Three.js 本地打包，執行時不依賴 CDN
+- WebView2 資料存放於 `%LOCALAPPDATA%\A15-HudWebViewDemo\WebView2`
 
 ## 執行需求
 
@@ -23,7 +30,7 @@
 
 ## 執行
 
-雙擊 `啟動HUD.bat`，或在專案資料夾執行：
+雙擊 `啟動HUD.bat`，或執行：
 
 ```powershell
 dotnet run
@@ -31,19 +38,18 @@ dotnet run
 
 第一次執行會還原 Microsoft WebView2 NuGet 套件。
 
-## 操作
-
-- 面板位置按鈕：移動系統滑鼠
-- 「在目前位置點一下」：送出一次真實的滑鼠左鍵
-- 「切換滑鼠穿透」：HUD 保持顯示，操作會落到後方視窗
-- `F8`：切換互動／穿透模式
-- `Esc` 或面板右上角按鈕：關閉 HUD
-
 ## 專案結構
 
-- `HudForm.cs`：HUD 面板、游標覆蓋層與 Windows API 整合
-- `wwwroot/index.html`：WebView2 控制面板 UI
-- `HudWebViewDemo.csproj`：.NET 專案設定
+- `HudForm.cs`：控制面板、透明寵物視窗與 WebView2 訊息橋接
+- `wwwroot/index.html`：2D／3D 寵物選擇面板
+- `wwwroot/pet-overlay.html`：透明寵物頁面
+- `wwwroot/pet-overlay-source.js`：寵物與 Three.js 場景原始碼
+- `wwwroot/pet-overlay.bundle.js`：瀏覽器執行用單檔 bundle
+- `wwwroot/vendor/`：本地 Three.js 來源
 - `啟動HUD.bat`：快速啟動
 
-> 安全設計：只有在使用者操作面板時才會移動或點擊滑鼠；不包含自動連點、鍵盤控制或 MCP 連線。
+## 技術說明
+
+本機頁面透過 WebView2 虛擬主機 `https://appassets.local/` 載入。Three.js 與寵物程式已預先打包成傳統 IIFE JavaScript，避免本機 ES Module 與 CORS 限制。
+
+目前 3D 渲染約限制為 30 FPS，並限制裝置像素比例以降低全螢幕透明 WebGL 的 GPU 負擔。

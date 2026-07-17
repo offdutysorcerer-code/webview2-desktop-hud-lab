@@ -1,0 +1,20 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent}
+#three{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;opacity:0;transition:opacity .25s}
+#pet2d{position:fixed;left:0;top:0;width:82px;height:72px;pointer-events:none;will-change:transform;filter:drop-shadow(0 0 8px #00eaff88);transition:opacity .25s}
+body.mode3d #three{opacity:1}body.mode3d #pet2d{opacity:0}
+.drone{position:absolute;left:13px;top:14px;width:56px;height:42px;border:2px solid #70f7ff;border-radius:18px 18px 22px 22px;background:linear-gradient(145deg,#0a2434e8,#07131fe8);box-shadow:inset 0 0 13px #08dfff44,0 0 9px #00dbff55;animation:hover 1.8s ease-in-out infinite}
+.ear{position:absolute;top:-10px;width:15px;height:18px;border:2px solid #70f7ff;background:#092130;transform:rotate(45deg);z-index:-1}.ear.left{left:4px}.ear.right{right:4px;transform:rotate(-45deg)}
+.face{position:absolute;left:7px;top:10px;width:38px;height:20px;border:1px solid #197d99;border-radius:10px;background:#031019;display:flex;align-items:center;justify-content:space-around}
+.eye{width:7px;height:7px;border-radius:50%;background:#9cffff;box-shadow:0 0 6px #00efff,0 0 12px #00b9ff;animation:blink 4.2s infinite}
+.mouth{position:absolute;left:22px;bottom:5px;width:10px;height:3px;border-bottom:1px solid #68f5ff;border-radius:50%}.core{position:absolute;left:24px;bottom:-5px;width:9px;height:9px;border:1px solid #b8ffff;border-radius:50%;background:#16daf0;box-shadow:0 0 8px #00efff}
+.tail{position:absolute;left:62px;top:34px;width:21px;height:13px;border-top:3px solid #62f5ff;border-radius:50%;transform-origin:left center;animation:tail .7s ease-in-out infinite alternate}
+.label{position:absolute;top:60px;width:100%;text-align:center;font:9px Consolas,monospace;letter-spacing:1px;color:#85eaf1;text-shadow:0 0 5px #00cbe8;opacity:.75}
+@keyframes hover{0%,100%{transform:translateY(1px) rotate(-1deg)}50%{transform:translateY(-4px) rotate(1deg)}}@keyframes tail{from{transform:rotate(-18deg)}to{transform:rotate(20deg)}}@keyframes blink{0%,46%,50%,100%{transform:scaleY(1)}48%{transform:scaleY(.08)}}
+</style></head>
+<body>
+<canvas id="three"></canvas>
+<div id="pet2d"><div class="drone"><i class="ear left"></i><i class="ear right"></i><div class="face"><i class="eye"></i><i class="eye"></i></div><i class="mouth"></i><i class="core"></i></div><i class="tail"></i><div class="label">A15 // ONLINE</div></div>
+<script src="./pet-overlay.bundle.js"></script></body></html>

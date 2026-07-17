@@ -22,8 +22,7 @@ public sealed class HudForm : Form
 
     private readonly WebView2 webView = new() { Dock = DockStyle.Fill };
     private readonly System.Windows.Forms.Timer cursorTimer = new() { Interval = 33 };
-    private CursorOverlayForm? cursorOverlay;
-    private bool clickThrough;
+    private PetOverlayForm? cursorOverlay;
     private bool pageReady;
     private int topmostRefreshTick;
 
@@ -44,21 +43,13 @@ public sealed class HudForm : Form
         {
             cursorTimer.Stop();
             cursorOverlay?.Close();
-            UnregisterHotKey(Handle, HotkeyId);
         };
         cursorTimer.Tick += UpdateCursor;
     }
 
-    protected override void WndProc(ref Message m)
-    {
-        if (m.Msg == WmHotkey && m.WParam.ToInt32() == HotkeyId) ToggleClickThrough();
-        base.WndProc(ref m);
-    }
-
     private async void InitializeAsync(object? sender, EventArgs e)
     {
-        RegisterHotKey(Handle, HotkeyId, 0, (uint)Keys.F8);
-        cursorOverlay = new CursorOverlayForm();
+        cursorOverlay = new PetOverlayForm();
         cursorOverlay.Show(this);
 
         var userDataFolder = Path.Combine(
@@ -68,17 +59,21 @@ public sealed class HudForm : Form
         Directory.CreateDirectory(userDataFolder);
         TryDeleteLegacyWebViewData();
         var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder);
+        await cursorOverlay.InitializeAsync(environment);
         await webView.EnsureCoreWebView2Async(environment);
         webView.DefaultBackgroundColor = Color.FromArgb(5, 19, 30);
         webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+        webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            "appassets.local",
+            Path.Combine(AppContext.BaseDirectory, "wwwroot"),
+            CoreWebView2HostResourceAccessKind.Allow);
         webView.CoreWebView2.WebMessageReceived += OnWebMessage;
         webView.CoreWebView2.NavigationCompleted += (_, _) =>
         {
             pageReady = true;
-            SendState();
             cursorTimer.Start();
         };
-        webView.Source = new Uri(Path.Combine(AppContext.BaseDirectory, "wwwroot", "index.html"));
+        webView.Source = new Uri("https://appassets.local/index.html");
     }
 
     private void UpdateCursor(object? sender, EventArgs e)
@@ -109,14 +104,12 @@ public sealed class HudForm : Form
         var action = root.TryGetProperty("action", out var value) ? value.GetString() : null;
         switch (action)
         {
-            case "togglePassThrough": ToggleClickThrough(); break;
-            case "move": MoveTo(root.GetProperty("target").GetString()); break;
-            case "click":
-                mouse_event(MouseeventfLeftdown, 0, 0, 0, UIntPtr.Zero);
-                mouse_event(MouseeventfLeftup, 0, 0, 0, UIntPtr.Zero);
-                Flash("已送出滑鼠左鍵點擊");
+            case "setPet":
+                cursorOverlay?.SetPetMode(root.GetProperty("mode").GetString() ?? "2d");
                 break;
-            case "close": Close(); break;
+            case "close":
+                Close();
+                break;
         }
     }
 
@@ -134,29 +127,12 @@ public sealed class HudForm : Form
         Flash($"游標移至 {point.X}, {point.Y}");
     }
 
-    private void ToggleClickThrough()
-    {
-        clickThrough = !clickThrough;
-        var exStyle = GetWindowLongPtr(Handle, GwlExstyle).ToInt64();
-        exStyle = clickThrough
-            ? exStyle | WsExTransparent | WsExNoActivate
-            : exStyle & ~(WsExTransparent | WsExNoActivate);
-        SetWindowLongPtr(Handle, GwlExstyle, new IntPtr(exStyle));
-        SendState();
-    }
-
     private void EnsureHudTopMost()
     {
         const uint flags = SwpNoMove | SwpNoSize | SwpNoActivate | SwpShowWindow;
         SetWindowPos(Handle, HwndTopmost, 0, 0, 0, 0, flags);
         if (cursorOverlay is not null && !cursorOverlay.IsDisposed)
             SetWindowPos(cursorOverlay.Handle, HwndTopmost, 0, 0, 0, 0, flags);
-    }
-
-    private void SendState()
-    {
-        if (pageReady)
-            webView.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "state", clickThrough }));
     }
 
     private void Flash(string text)
@@ -188,19 +164,17 @@ public sealed class HudForm : Form
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int index, IntPtr value);
 }
 
-internal sealed class CursorOverlayForm : Form
+internal sealed class PetOverlayForm : Form
 {
+    private const int GwlExstyle = -20;
     private const int WsExTransparent = 0x20;
     private const int WsExToolWindow = 0x80;
     private const int WsExNoActivate = 0x08000000;
-    private static readonly IntPtr HwndTopmost = new(-1);
-    private const uint SwpNoMove = 0x0002;
-    private const uint SwpNoSize = 0x0001;
-    private const uint SwpNoActivate = 0x0010;
-    private const uint SwpShowWindow = 0x0040;
-    private Point cursor;
 
-    public CursorOverlayForm()
+    private readonly WebView2 overlayView = new() { Dock = DockStyle.Fill };
+    private bool pageReady;
+
+    public PetOverlayForm()
     {
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.Manual;
@@ -209,6 +183,7 @@ internal sealed class CursorOverlayForm : Form
         ShowInTaskbar = false;
         BackColor = Color.Black;
         TransparencyKey = Color.Black;
+        Controls.Add(overlayView);
     }
 
     protected override bool ShowWithoutActivation => true;
@@ -223,44 +198,55 @@ internal sealed class CursorOverlayForm : Form
         }
     }
 
+    public async Task InitializeAsync(CoreWebView2Environment environment)
+    {
+        await overlayView.EnsureCoreWebView2Async(environment);
+        overlayView.DefaultBackgroundColor = Color.Transparent;
+        overlayView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+        overlayView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+        overlayView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            "appassets.local",
+            Path.Combine(AppContext.BaseDirectory, "wwwroot"),
+            CoreWebView2HostResourceAccessKind.Allow);
+        overlayView.CoreWebView2.NavigationCompleted += (_, _) => pageReady = true;
+
+        var childStyle = GetWindowLongPtr(overlayView.Handle, GwlExstyle).ToInt64();
+        SetWindowLongPtr(
+            overlayView.Handle,
+            GwlExstyle,
+            new IntPtr(childStyle | WsExTransparent | WsExNoActivate));
+
+        overlayView.Source = new Uri("https://appassets.local/pet-overlay.html");
+    }
+
     public void SetCursorPosition(Point screenPoint)
     {
-        cursor = new Point(screenPoint.X - Bounds.Left, screenPoint.Y - Bounds.Top);
-        Invalidate();
+        if (!pageReady || overlayView.CoreWebView2 is null) return;
+
+        overlayView.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
+        {
+            type = "cursor",
+            x = screenPoint.X - Bounds.Left,
+            y = screenPoint.Y - Bounds.Top
+        }));
     }
 
-    protected override void OnPaint(PaintEventArgs e)
+    public void SetPetMode(string mode)
     {
-        base.OnPaint(e);
-        var g = e.Graphics;
-        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
-        var outer = new Rectangle(cursor.X - 25, cursor.Y - 25, 50, 50);
-        var inner = new Rectangle(cursor.X - 18, cursor.Y - 18, 36, 36);
-
-        using var softGlow = new Pen(Color.FromArgb(65, 0, 190, 220), 5);
-        using var cyan = new Pen(Color.FromArgb(245, 70, 238, 255), 2);
-        using var ice = new Pen(Color.FromArgb(225, 205, 252, 255), 1);
-        using var core = new SolidBrush(Color.FromArgb(250, 235, 255, 255));
-
-        g.DrawEllipse(softGlow, inner);
-        g.DrawEllipse(ice, inner);
-        g.DrawArc(cyan, outer, 205, 65);
-        g.DrawArc(cyan, outer, 295, 65);
-        g.DrawArc(cyan, outer, 25, 65);
-        g.DrawArc(cyan, outer, 115, 65);
-
-        g.DrawLine(ice, cursor.X - 29, cursor.Y, cursor.X - 20, cursor.Y);
-        g.DrawLine(ice, cursor.X + 20, cursor.Y, cursor.X + 29, cursor.Y);
-        g.DrawLine(ice, cursor.X, cursor.Y - 29, cursor.X, cursor.Y - 20);
-        g.DrawLine(ice, cursor.X, cursor.Y + 20, cursor.X, cursor.Y + 29);
-
-        g.DrawLine(cyan, cursor.X - 10, cursor.Y, cursor.X - 4, cursor.Y);
-        g.DrawLine(cyan, cursor.X + 4, cursor.Y, cursor.X + 10, cursor.Y);
-        g.DrawLine(cyan, cursor.X, cursor.Y - 10, cursor.X, cursor.Y - 4);
-        g.DrawLine(cyan, cursor.X, cursor.Y + 4, cursor.X, cursor.Y + 10);
-        g.FillEllipse(core, cursor.X - 2, cursor.Y - 2, 4, 4);
+        if (!pageReady || overlayView.CoreWebView2 is null) return;
+        overlayView.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
+        {
+            type = "mode",
+            mode = mode == "3d" ? "3d" : "2d"
+        }));
     }
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    private static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int index);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+    private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int index, IntPtr value);
 }
+
 
 

@@ -1,57 +1,42 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>A15 HUD</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A15 Pet HUD</title>
 <style>
-:root{color-scheme:dark;font-family:"Segoe UI","Microsoft JhengHei",sans-serif}
-*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent}
-#cursor{position:fixed;width:58px;height:58px;border:3px solid #55f6ff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 12px #55f6ff,0 0 32px #00a8ff,inset 0 0 14px #55f6ff;pointer-events:none;z-index:3}
-#cursor:after{content:"";position:absolute;inset:18px;border-radius:50%;background:#fff;box-shadow:0 0 12px #fff}
-.panel{position:fixed;top:28px;right:28px;width:350px;border:1px solid #55f6ff66;border-radius:18px;background:linear-gradient(145deg,#06131fe8,#091d2be3);box-shadow:0 0 35px #00b7ff28,inset 0 1px #ffffff1c;backdrop-filter:blur(18px);overflow:hidden}
-.header{height:54px;padding:0 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #55f6ff25;background:#0c2d3c99}
-.logo{width:25px;height:25px;border:2px solid #55f6ff;transform:rotate(45deg);box-shadow:0 0 10px #55f6ff}
-.title{flex:1}.title b{display:block;letter-spacing:2px;color:#b9fbff}.title small{color:#65a8b8}
-button{border:1px solid #47ddeb55;border-radius:10px;background:#0c3547;color:#d5fcff;padding:10px 12px;cursor:pointer;transition:.15s}
-button:hover{background:#14536b;border-color:#55f6ff;box-shadow:0 0 14px #36dfff32}
-.close{width:30px;height:30px;padding:0;border-radius:50%}.body{padding:16px}
-.status{display:flex;align-items:center;gap:8px;margin-bottom:14px;color:#83c5d0;font-size:13px}
-.dot{width:9px;height:9px;border-radius:50%;background:#52ffbb;box-shadow:0 0 10px #52ffbb}
-.coords{font:700 28px Consolas,monospace;color:#f3feff;letter-spacing:1px;margin:4px 0 16px}.coords span{color:#55f6ff}
-.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
-.wide{width:100%;margin-top:8px}.danger{border-color:#ff557766;color:#ffb7c5}
-.hint{margin-top:14px;padding-top:12px;border-top:1px solid #55f6ff22;color:#6297a2;font-size:12px;line-height:1.6}
-.badge{position:fixed;left:24px;bottom:24px;padding:10px 15px;border:1px solid #55f6ff44;border-radius:999px;background:#071923c9;color:#8fd7df;font-size:12px;backdrop-filter:blur(10px)}
-#toast{position:fixed;left:50%;bottom:72px;transform:translate(-50%,20px);padding:11px 18px;border:1px solid #55f6ff77;border-radius:12px;background:#092634e8;color:#d9fdff;opacity:0;transition:.2s;box-shadow:0 0 22px #00bfff33}
-#toast.show{opacity:1;transform:translate(-50%,0)}
-body.pass .panel{opacity:.5}body.pass .badge:after{content:" · 滑鼠穿透中";color:#52ffbb}
-</style>
-</head>
-<body>
-
-<section class="panel">
- <div class="header"><div class="logo"></div><div class="title"><b>A15 DESKTOP HUD</b><small>WebView2 mouse control prototype</small></div><button class="close" onclick="send('close')">×</button></div>
- <div class="body">
-  <div class="status"><i class="dot"></i><span id="mode">互動模式</span></div>
-  <div class="coords">X <span id="x">0</span> · Y <span id="y">0</span></div>
-  <div class="grid"><button onclick="move('topLeft')">左上</button><button onclick="move('center')">中央</button><button onclick="move('bottomRight')">右下</button></div>
-  <button class="wide" onclick="send('click')">在目前位置點一下</button>
-  <button class="wide" onclick="send('togglePassThrough')">切換滑鼠穿透（F8）</button>
-  <div class="hint">HUD 使用真正的 HTML/CSS 元素。穿透後仍會常駐顯示，但操作會落到後方桌面；按 F8 即可恢復面板互動。</div>
- </div>
-</section>
-<div id="toast"></div>
+:root{font-family:"Segoe UI","Microsoft JhengHei",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#05131e}
+.shell{height:100%;padding:18px;background:radial-gradient(circle at 85% 0,#0a405466,transparent 45%),linear-gradient(145deg,#071a28,#040d16)}
+.header{display:flex;align-items:center;gap:11px;padding:2px 2px 16px;border-bottom:1px solid #52eaff25}
+.logo{width:27px;height:27px;border:2px solid #62f5ff;transform:rotate(45deg);box-shadow:0 0 12px #00dfff88}
+.title{flex:1}.title b{display:block;color:#c5fbff;letter-spacing:2px;font-size:14px}.title small{color:#629ba8}
+.close{width:31px;height:31px;border:1px solid #52eaff44;border-radius:50%;background:#092331;color:#a9edf2;cursor:pointer}
+h2{font-size:12px;letter-spacing:2px;color:#70aeb7;font-weight:500;margin:17px 0 11px}
+.choices{display:grid;gap:11px}
+.card{position:relative;display:grid;grid-template-columns:72px 1fr;gap:13px;align-items:center;width:100%;padding:12px;border:1px solid #3ec8db35;border-radius:14px;background:#092331b8;color:#c9f7fa;text-align:left;cursor:pointer;transition:.18s}
+.card:hover{transform:translateY(-1px);border-color:#55edff88;background:#0c3040}
+.card.active{border-color:#5cf2ff;box-shadow:0 0 18px #00dfff25,inset 0 0 14px #00dfff0c}
+.preview{height:62px;border-radius:11px;display:grid;place-items:center;background:#03101a;border:1px solid #37bfd833;overflow:hidden}
+.pet2d{width:38px;height:29px;border:2px solid #6af5ff;border-radius:12px 12px 15px 15px;position:relative;box-shadow:0 0 10px #00eaff88}
+.pet2d:before,.pet2d:after{content:"";position:absolute;top:9px;width:5px;height:5px;border-radius:50%;background:#aaffff;box-shadow:0 0 6px #00eaff}.pet2d:before{left:8px}.pet2d:after{right:8px}
+.cube{width:31px;height:31px;border:2px solid #6af5ff;transform:rotateX(58deg) rotateZ(45deg);box-shadow:0 0 12px #00eaff88,inset 0 0 12px #00eaff44}
+.copy b{display:block;font-size:14px;margin-bottom:4px}.copy small{color:#6fa5ae;line-height:1.4}
+.tag{position:absolute;right:10px;top:9px;padding:3px 7px;border-radius:999px;background:#123948;color:#72eaf3;font:9px Consolas}
+.footer{margin-top:15px;padding:12px;border-radius:12px;background:#061722;color:#5e929c;font-size:11px;line-height:1.55;border:1px solid #44dcec1e}
+</style></head>
+<body><main class="shell">
+<div class="header"><div class="logo"></div><div class="title"><b>A15 PET LAB</b><small>Desktop companion selector</small></div><button class="close" onclick="send('close')">×</button></div>
+<h2>SELECT COMPANION</h2>
+<div class="choices">
+<button class="card active" data-pet="2d"><span class="preview"><i class="pet2d"></i></span><span class="copy"><b>2D 電子寵物</b><small>HTML / CSS 動畫<br>輕量、清晰、可換 GIF</small></span><i class="tag">DOM</i></button>
+<button class="card" data-pet="3d"><span class="preview"><i class="cube"></i></span><span class="copy"><b>3D 電子寵物</b><small>Three.js / WebGL<br>立體光照、旋轉與動畫</small></span><i class="tag">WEBGL</i></button>
+</div>
+<div class="footer">選擇會立即套用到滑鼠旁的透明寵物層，不需重新啟動程式。</div>
+</main>
 <script>
-const x=document.querySelector('#x'),y=document.querySelector('#y'),toast=document.querySelector('#toast');
-let toastTimer;
 const send=(action,extra={})=>chrome.webview.postMessage({action,...extra});
-const move=target=>send('move',{target});
-chrome.webview.addEventListener('message',({data})=>{
- if(data.type==='cursor'){x.textContent=data.screenX;y.textContent=data.screenY}
- if(data.type==='state'){document.body.classList.toggle('pass',data.clickThrough);document.querySelector('#mode').textContent=data.clickThrough?'穿透模式（按 F8 返回）':'互動模式'}
- if(data.type==='flash'){toast.textContent=data.text;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),1400)}
-});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')send('close')});
-</script>
-</body></html>
+document.querySelectorAll('.card').forEach(card=>card.addEventListener('click',()=>{
+ document.querySelectorAll('.card').forEach(x=>x.classList.remove('active'));
+ card.classList.add('active');send('setPet',{mode:card.dataset.pet});
+}));
+</script></body></html>
